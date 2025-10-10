@@ -3,19 +3,47 @@ package com.example.homework1
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import java.time.LocalDateTime
-import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
+import java.time.LocalDateTime
+import android.graphics.Color
+import android.app.Application
+import timber.log.Timber
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+
+
+class MyApp : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        Timber.plant(Timber.DebugTree())
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // ТЕСТ FILESTORAGE - теперь this работает!
-        testFileStorage()
-
         setContent {
-            Text("Смотри логи")
+            // Просто показываем сплеш-скрин
+            SplashScreen {
+                // После загрузки показываем основной экран
+                setContent {
+                    Text("Основной экран здесь")
+                }
+            }
         }
     }
 
@@ -23,11 +51,12 @@ class MainActivity : ComponentActivity() {
         println("=== ТЕСТ FILESTORAGE ===")
 
         val storage = FileStorage(this)
+
         val testTask1 = TodoItem(
             uid = "uid1",
             text = "Задача 1",
             importance = Importance.IMPORTANT,
-            color = android.graphics.Color.RED,
+            color = Color.RED,
             deadLine = LocalDateTime.now().plusDays(1)
         )
 
@@ -35,25 +64,56 @@ class MainActivity : ComponentActivity() {
             uid = "uid2",
             text = "Задача 2",
             importance = Importance.REGULAR,
-            color = android.graphics.Color.RED,
+            color = Color.BLUE,
             deadLine = LocalDateTime.now().plusDays(2)
         )
 
         storage.add(testTask1)
         storage.add(testTask2)
 
-        storage.items.forEach {
-            println("Задача: ${it.text}, UID: ${it.uid}")
-        }
+        println("Текущие задачи:")
+        storage.items.forEach { println("${it.uid}: ${it.text}") }
 
         storage.saveToFile()
-        println("Файл сохранен")
 
         storage.loadFromFile()
-        println("Загружено задач: ${storage.items.size}")
+        println("Загружено задач после сохранения и загрузки: ${storage.items.size}")
 
-        val deleteResult = storage.delete("uid1")
-        println("Удаление uid1: $deleteResult")
-        println("Осталось задач: ${storage.items.size}")
+        storage.delete("uid1")
+        println("Осталось задач после удаления uid1: ${storage.items.size}")
+
+        storage.items.forEach { println("${it.uid}: ${it.text}") }
+    }
+}
+
+
+@Composable
+fun SplashScreen(
+    onSplashCompleted: () -> Unit
+) {
+    LaunchedEffect(Unit) {
+        delay(2000)
+        onSplashCompleted()
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+
+
+        Text(
+            text = "ToDo App",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Text(
+            text = "Организуйте свои задачи",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
     }
 }
