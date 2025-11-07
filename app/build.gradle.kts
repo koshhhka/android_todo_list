@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.20"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.21"
 }
 
 android {
@@ -41,6 +41,11 @@ android {
 }
 
 dependencies {
+    implementation("androidx.compose.material:material-icons-extended:1.7.8")
+    implementation("com.google.accompanist:accompanist-flowlayout:0.36.0")
+    implementation("androidx.navigation:navigation-compose:2.9.6")
+    implementation("androidx.compose.material:material:1.9.4")
+    implementation("androidx.compose.foundation:foundation:1.9.3")
     implementation(libs.androidx.compose.material)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
