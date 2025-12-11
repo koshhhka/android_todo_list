@@ -11,31 +11,29 @@ import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.rememberDismissState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import com.example.homework1.domain.repository.TodoRepository
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TodoListScreen(
-    fileStorage: FileStorage,
+    repository: TodoRepository,
     onAddClick: () -> Unit,
-    onEditClick: (String) -> Unit,
-    refreshKey: Int
+    onEditClick: (String) -> Unit
 ) {
-    var todos by remember { mutableStateOf<List<TodoItem>>(emptyList()) }
+    val todos by repository.items.collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        fileStorage.loadFromFile()
-        todos = fileStorage.items
-    }
-
-    LaunchedEffect(refreshKey) {
-        fileStorage.loadFromFile()
-        todos = fileStorage.items
+        repository.loadItems()
     }
 
     Scaffold(
@@ -45,22 +43,42 @@ fun TodoListScreen(
             }
         },
         topBar = {
-            TopAppBar(title = { Text("Мои дела") })
+            TopAppBar(
+                title = { 
+                    Text("Мои дела (${todos.size})") 
+                }
+            )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-        ) {
-            items(todos.size) { index ->
+        if (todos.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("Список дел пуст")
+                    Text("Нажмите + чтобы добавить дело", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+            ) {
+                items(todos.size) { index ->
                 val item = todos[index]
 
                 val dismissState = rememberDismissState { value ->
                     if (value == DismissValue.DismissedToStart) {
-                        fileStorage.delete(item.uid)
-                        fileStorage.saveToFile()
-                        todos = fileStorage.items
+                        scope.launch {
+                            repository.deleteItem(item.uid)
+                        }
                         true
                     } else false
                 }
@@ -88,6 +106,7 @@ fun TodoListScreen(
                     }
                 )
             }
+        }
         }
     }
 }

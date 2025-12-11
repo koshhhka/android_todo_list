@@ -3,8 +3,13 @@ package com.example.homework1
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.homework1.data.local.LocalDataSource
+import com.example.homework1.data.remote.RemoteDataSource
+import com.example.homework1.domain.repository.TodoRepository
+import kotlinx.coroutines.launch
 
 @Composable
 fun AppNavigation(
@@ -12,45 +17,50 @@ fun AppNavigation(
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
-    val fileStorage = remember { FileStorage(context) }
+    val scope = rememberCoroutineScope()
     
-    var refreshKey by remember { mutableStateOf(0) }
+    val fileStorage = remember { FileStorage(context) }
+    val localDataSource = remember { LocalDataSource(fileStorage) }
+    val remoteDataSource = remember { RemoteDataSource() }
+    val repository = remember { TodoRepository(localDataSource, remoteDataSource) }
 
     NavHost(navController = navController, startDestination = startDestination) {
         composable("list") {
             TodoListScreen(
-                fileStorage = fileStorage,
+                repository = repository,
                 onAddClick = { navController.navigate("edit_new") },
-                onEditClick = { id -> navController.navigate("edit/$id") },
-                refreshKey = refreshKey
+                onEditClick = { id -> navController.navigate("edit/$id") }
             )
         }
         composable("edit_new") {
             EditTodoScreen(
                 initial = null,
                 onSave = { item ->
-                    fileStorage.add(item)
-                    fileStorage.saveToFile()
-                    refreshKey++
-                    navController.popBackStack()
+                    scope.launch {
+                        repository.saveItem(item)
+                        navController.popBackStack()
+                    }
                 },
                 onCancel = { navController.popBackStack() }
             )
         }
         composable("edit/{id}") { backStackEntry ->
             val id = backStackEntry.arguments?.getString("id")
-            val item = id?.let { fileStorage.getItem(it) }
+            var item by remember { mutableStateOf<TodoItem?>(null) }
+            
+            LaunchedEffect(id) {
+                if (id != null) {
+                    item = repository.getItem(id)
+                }
+            }
+            
             EditTodoScreen(
                 initial = item,
                 onSave = { savedItem ->
-                    if (item != null) {
-                        fileStorage.update(savedItem)
-                    } else {
-                        fileStorage.add(savedItem)
+                    scope.launch {
+                        repository.saveItem(savedItem)
+                        navController.popBackStack()
                     }
-                    fileStorage.saveToFile()
-                    refreshKey++
-                    navController.popBackStack()
                 },
                 onCancel = { navController.popBackStack() }
             )
