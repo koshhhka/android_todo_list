@@ -19,6 +19,18 @@ class FileStorage(private val context: Context) {
         Timber.d("Добавлена задача: ${item.text}, UID: ${item.uid}")
     }
 
+    fun update(item: TodoItem): Boolean {
+        val index = _items.indexOfFirst { it.uid == item.uid }
+        if (index != -1) {
+            _items[index] = item
+            Timber.d("Обновлена задача: ${item.text}, UID: ${item.uid}")
+            return true
+        } else {
+            Timber.w("Не удалось обновить задачу с UID: ${item.uid} (не найдена)")
+            return false
+        }
+    }
+
     fun delete(uid: String): Boolean {
         val removed = _items.removeIf { it.uid == uid }
         if (removed) {
@@ -29,10 +41,15 @@ class FileStorage(private val context: Context) {
         return removed
     }
 
+    fun getItem(uid: String): TodoItem? {
+        return _items.find { it.uid == uid }
+    }
+
     fun saveToFile(fileName: String = "todo_items.txt") {
         try {
             val lines = _items.map { item ->
-                "${item.uid}|${item.text}|${item.importance}|${item.color}|${item.deadLine}|${item.isDone}"
+                val deadLineStr = item.deadLine?.toString() ?: "null"
+                "${item.uid}|${item.text}|${item.importance}|${item.color}|$deadLineStr|${item.isDone}"
             }
 
             val fileContent = lines.joinToString("\n")

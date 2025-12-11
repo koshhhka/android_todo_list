@@ -17,39 +17,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import java.time.LocalDateTime
-import java.util.*
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TodoListScreen(
+    fileStorage: FileStorage,
     onAddClick: () -> Unit,
-    onEditClick: (String) -> Unit
+    onEditClick: (String) -> Unit,
+    refreshKey: Int
 ) {
-    var todos by remember {
-        mutableStateOf(
-            mutableListOf(
-                TodoItem(
-                    uid = UUID.randomUUID().toString(),
-                    text = "Купить молоко",
-                    importance = Importance.REGULAR,
-                    color = android.graphics.Color.YELLOW,
-                    deadLine = LocalDateTime.now(),
-                    isDone = false
-                ),
-                TodoItem(
-                    uid = UUID.randomUUID().toString(),
-                    text = "Позвонить маме",
-                    importance = Importance.IMPORTANT, // исправлено
-                    color = android.graphics.Color.RED,
-                    deadLine = null,
-                    isDone = true
-                )
-            )
-        )
+    var todos by remember { mutableStateOf<List<TodoItem>>(emptyList()) }
+
+    LaunchedEffect(Unit) {
+        fileStorage.loadFromFile()
+        todos = fileStorage.items
     }
 
-    val scope = rememberCoroutineScope()
+    LaunchedEffect(refreshKey) {
+        fileStorage.loadFromFile()
+        todos = fileStorage.items
+    }
 
     Scaffold(
         floatingActionButton = {
@@ -71,7 +58,9 @@ fun TodoListScreen(
 
                 val dismissState = rememberDismissState { value ->
                     if (value == DismissValue.DismissedToStart) {
-                        todos.removeAt(index)
+                        fileStorage.delete(item.uid)
+                        fileStorage.saveToFile()
+                        todos = fileStorage.items
                         true
                     } else false
                 }
