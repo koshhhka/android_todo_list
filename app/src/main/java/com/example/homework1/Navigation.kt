@@ -7,6 +7,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.homework1.data.local.LocalDataSource
+import com.example.homework1.data.remote.AuthManager
 import com.example.homework1.data.remote.RemoteDataSource
 import com.example.homework1.domain.repository.TodoRepository
 import kotlinx.coroutines.launch
@@ -21,7 +22,11 @@ fun AppNavigation(
     
     val fileStorage = remember { FileStorage(context) }
     val localDataSource = remember { LocalDataSource(fileStorage) }
-    val remoteDataSource = remember { RemoteDataSource() }
+    val authManager = remember { AuthManager(context) }
+    val remoteDataSource = remember { 
+        authManager.initializeToken()
+        RemoteDataSource() 
+    }
     val repository = remember { TodoRepository(localDataSource, remoteDataSource) }
 
     NavHost(navController = navController, startDestination = startDestination) {
