@@ -34,6 +34,8 @@ fun AppNavigation(
         }
         composable("edit_new") {
             EditTodoScreen(
+                itemId = null,
+                repository = null,
                 initial = null,
                 onSave = { item ->
                     scope.launch {
@@ -46,16 +48,10 @@ fun AppNavigation(
         }
         composable("edit/{id}") { backStackEntry ->
             val id = backStackEntry.arguments?.getString("id")
-            var item by remember { mutableStateOf<TodoItem?>(null) }
-            
-            LaunchedEffect(id) {
-                if (id != null) {
-                    item = repository.getItem(id)
-                }
-            }
             
             EditTodoScreen(
-                initial = item,
+                itemId = id,
+                repository = repository,
                 onSave = { savedItem ->
                     scope.launch {
                         repository.saveItem(savedItem)
