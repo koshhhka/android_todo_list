@@ -1,78 +1,70 @@
 package com.example.homework1.data.local
 
-import com.example.homework1.FileStorage
 import com.example.homework1.TodoItem
+import com.example.homework1.data.local.db.TodoDatabase
+import com.example.homework1.data.local.db.TodoItemEntity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-class LocalDataSource(private val fileStorage: FileStorage) {
+class LocalDataSource(private val database: TodoDatabase) {
     
-    private val _items = MutableStateFlow<List<TodoItem>>(emptyList())
-    val items: Flow<List<TodoItem>> = _items.asStateFlow()
+    private val dao = database.todoItemDao()
+    
+    val items: Flow<List<TodoItem>> = dao.getAllItems().map { entities ->
+        entities.map { it.toTodoItem() }
+    }
 
     suspend fun loadItems() {
-        try {
-            fileStorage.loadFromFile()
-            _items.value = fileStorage.items
-            Timber.d("LocalDataSource: загружено ${_items.value.size} дел из кэша")
-        } catch (e: Exception) {
-            Timber.e(e, "LocalDataSource: ошибка при загрузке из кэша")
-        }
+        // Данные загружаются автоматически через Flow в items
+        // Этот метод оставлен для совместимости с Repository
+        Timber.d("LocalDataSource: данные загружаются через Flow")
     }
 
     suspend fun getItem(uid: String): TodoItem? {
-        return try {
-            fileStorage.getItem(uid)
-        } catch (e: Exception) {
-            Timber.e(e, "LocalDataSource: ошибка при получении дела $uid")
-            null
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                dao.getItem(uid)?.toTodoItem()
+            }.getOrElse { e ->
+                Timber.e(e, "LocalDataSource: ошибка при получении дела $uid")
+                null
+            }
         }
     }
 
     suspend fun saveItem(item: TodoItem) {
-        try {
-            val existingItem = fileStorage.getItem(item.uid)
-            if (existingItem != null) {
-                fileStorage.update(item)
-            } else {
-                fileStorage.add(item)
+        withContext(Dispatchers.IO) {
+            runCatching {
+                dao.insertItem(TodoItemEntity.fromTodoItem(item))
+                Timber.d("LocalDataSource: сохранено дело ${item.uid} в базу данных")
+            }.onFailure { e ->
+                Timber.e(e, "LocalDataSource: ошибка при сохранении в базу данных")
             }
-            fileStorage.saveToFile()
-            _items.value = fileStorage.items
-            Timber.d("LocalDataSource: сохранено дело ${item.uid} в кэш")
-        } catch (e: Exception) {
-            Timber.e(e, "LocalDataSource: ошибка при сохранении в кэш")
         }
     }
 
     suspend fun deleteItem(uid: String) {
-        try {
-            fileStorage.delete(uid)
-            fileStorage.saveToFile()
-            _items.value = fileStorage.items
-            Timber.d("LocalDataSource: удалено дело $uid из кэша")
-        } catch (e: Exception) {
-            Timber.e(e, "LocalDataSource: ошибка при удалении из кэша")
+        withContext(Dispatchers.IO) {
+            runCatching {
+                dao.deleteItemByUid(uid)
+                Timber.d("LocalDataSource: удалено дело $uid из базы данных")
+            }.onFailure { e ->
+                Timber.e(e, "LocalDataSource: ошибка при удалении из базы данных")
+            }
         }
     }
 
     suspend fun saveItems(items: List<TodoItem>) {
-        try {
-            items.forEach { item ->
-                val existingItem = fileStorage.getItem(item.uid)
-                if (existingItem != null) {
-                    fileStorage.update(item)
-                } else {
-                    fileStorage.add(item)
-                }
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val entities = items.map { TodoItemEntity.fromTodoItem(it) }
+                dao.insertItems(entities)
+                Timber.d("LocalDataSource: сохранено ${items.size} дел в базу данных")
+            }.onFailure { e ->
+                Timber.e(e, "LocalDataSource: ошибка при сохранении списка в базу данных")
             }
-            fileStorage.saveToFile()
-            _items.value = fileStorage.items
-            Timber.d("LocalDataSource: сохранено ${items.size} дел в кэш")
-        } catch (e: Exception) {
-            Timber.e(e, "LocalDataSource: ошибка при сохранении списка в кэш")
         }
     }
 }

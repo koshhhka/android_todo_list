@@ -13,16 +13,18 @@ class TodoRepository(
     
     val items: Flow<List<TodoItem>> = localDataSource.items
 
+    // Метод выполняется в потоке вызывающей стороны, но все операции с файлами и сетью
+    // выполняются в Dispatchers.IO через соответствующие DataSource
     suspend fun loadItems() {
         Timber.d("TodoRepository: загрузка списка дел")
-        // Сначала загружаем из кэша
+        // Сначала загружаем из кэша (выполняется в Dispatchers.IO внутри LocalDataSource)
         localDataSource.loadItems()
         
-        // Затем пытаемся загрузить с бэкенда
+        // Затем пытаемся загрузить с бэкенда (выполняется в Dispatchers.IO внутри RemoteDataSource)
         try {
             val remoteItems = remoteDataSource.loadItems()
             if (remoteItems.isNotEmpty()) {
-                // Сохраняем полученные данные в кэш
+                // Сохраняем полученные данные в кэш (выполняется в Dispatchers.IO внутри LocalDataSource)
                 localDataSource.saveItems(remoteItems)
             }
         } catch (e: Exception) {

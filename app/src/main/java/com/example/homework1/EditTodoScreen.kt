@@ -26,15 +26,25 @@ import java.util.*
 
 @Composable
 fun EditTodoScreen(
+    itemId: String? = null,
+    repository: com.example.homework1.domain.repository.TodoRepository? = null,
     initial: TodoItem? = null,
     onSave: (TodoItem) -> Unit,
     onCancel: () -> Unit
 ) {
-    var text by remember { mutableStateOf(TextFieldValue(initial?.text ?: "")) }
-    var importance by remember { mutableStateOf(initial?.importance ?: Importance.REGULAR) }
-    var color by remember { mutableStateOf(initial?.color ?: android.graphics.Color.WHITE) }
-    var deadLine by remember { mutableStateOf(initial?.deadLine) }
-    var isDone by remember { mutableStateOf(initial?.isDone ?: false) }
+    var loadedItem by remember { mutableStateOf<TodoItem?>(initial) }
+    
+    LaunchedEffect(itemId) {
+        if (itemId != null && repository != null) {
+            loadedItem = repository.getItem(itemId)
+        }
+    }
+    
+    var text by remember(loadedItem) { mutableStateOf(TextFieldValue(loadedItem?.text ?: "")) }
+    var importance by remember(loadedItem) { mutableStateOf(loadedItem?.importance ?: Importance.REGULAR) }
+    var color by remember(loadedItem) { mutableStateOf(loadedItem?.color ?: android.graphics.Color.WHITE) }
+    var deadLine by remember(loadedItem) { mutableStateOf(loadedItem?.deadLine) }
+    var isDone by remember(loadedItem) { mutableStateOf(loadedItem?.isDone ?: false) }
 
     BoxWithConstraints(
         Modifier
@@ -45,7 +55,7 @@ fun EditTodoScreen(
 
         Column(modifier = Modifier.fillMaxSize()) {
             EditTopBar(onCancel = onCancel) {
-                val uid = initial?.uid ?: UUID.randomUUID().toString()
+                val uid = loadedItem?.uid ?: UUID.randomUUID().toString()
                 val item = TodoItem(
                     uid = uid,
                     text = text.text,
@@ -94,7 +104,7 @@ fun EditTodoScreen(
 
             Spacer(modifier = Modifier.weight(1f))
             SaveCancelRow(onSaveClick = {
-                val uid = initial?.uid ?: UUID.randomUUID().toString()
+                val uid = loadedItem?.uid ?: UUID.randomUUID().toString()
                 val item = TodoItem(
                     uid = uid,
                     text = text.text,

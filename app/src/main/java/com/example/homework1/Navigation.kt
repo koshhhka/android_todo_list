@@ -7,6 +7,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.homework1.data.local.LocalDataSource
+import com.example.homework1.data.local.db.TodoDatabase
+import com.example.homework1.data.remote.AuthManager
 import com.example.homework1.data.remote.RemoteDataSource
 import com.example.homework1.domain.repository.TodoRepository
 import kotlinx.coroutines.launch
@@ -19,9 +21,13 @@ fun AppNavigation(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    val fileStorage = remember { FileStorage(context) }
-    val localDataSource = remember { LocalDataSource(fileStorage) }
-    val remoteDataSource = remember { RemoteDataSource() }
+    val database = remember { TodoDatabase.getDatabase(context) }
+    val localDataSource = remember { LocalDataSource(database) }
+    val authManager = remember { AuthManager(context) }
+    val remoteDataSource = remember { 
+        authManager.initializeToken()
+        RemoteDataSource() 
+    }
     val repository = remember { TodoRepository(localDataSource, remoteDataSource) }
 
     NavHost(navController = navController, startDestination = startDestination) {
@@ -34,6 +40,8 @@ fun AppNavigation(
         }
         composable("edit_new") {
             EditTodoScreen(
+                itemId = null,
+                repository = null,
                 initial = null,
                 onSave = { item ->
                     scope.launch {
@@ -46,16 +54,10 @@ fun AppNavigation(
         }
         composable("edit/{id}") { backStackEntry ->
             val id = backStackEntry.arguments?.getString("id")
-            var item by remember { mutableStateOf<TodoItem?>(null) }
-            
-            LaunchedEffect(id) {
-                if (id != null) {
-                    item = repository.getItem(id)
-                }
-            }
             
             EditTodoScreen(
-                initial = item,
+                itemId = id,
+                repository = repository,
                 onSave = { savedItem ->
                     scope.launch {
                         repository.saveItem(savedItem)
