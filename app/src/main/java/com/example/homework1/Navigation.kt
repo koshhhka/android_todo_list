@@ -7,6 +7,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.homework1.data.local.LocalDataSource
+import com.example.homework1.data.local.db.TodoDatabase
 import com.example.homework1.data.remote.AuthManager
 import com.example.homework1.data.remote.RemoteDataSource
 import com.example.homework1.domain.repository.TodoRepository
@@ -20,8 +21,8 @@ fun AppNavigation(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    val fileStorage = remember { FileStorage(context) }
-    val localDataSource = remember { LocalDataSource(fileStorage) }
+    val database = remember { TodoDatabase.getDatabase(context) }
+    val localDataSource = remember { LocalDataSource(database) }
     val authManager = remember { AuthManager(context) }
     val remoteDataSource = remember { 
         authManager.initializeToken()
